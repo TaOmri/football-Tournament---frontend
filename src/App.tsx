@@ -6,9 +6,16 @@ import {
   fetchMyPredictions,
   savePredictions,
   fetchPoints,
+  fetchLeaderboard, // 👈 חשוב: לוודא שקיים ב־api.ts
 } from "./api";
 import { Match, Prediction } from "./types";
 import "./styles.css";
+
+interface LeaderboardRow {
+  id: number;
+  username: string;
+  total_points: number;
+}
 
 function App() {
   const [view, setView] = useState<"login" | "register">("login");
@@ -21,9 +28,15 @@ function App() {
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [preds, setPreds] = useState<Record<number, Prediction>>({});
-  const [points, setPoints] = useState<{ totalPoints: number; perMatch: any[] } | null>(null);
+  const [points, setPoints] = useState<{
+    totalPoints: number;
+    perMatch: any[];
+  } | null>(null);
 
-  const [banner, setBanner] = useState<{ type: string; msg: string } | null>(null);
+  const [banner, setBanner] = useState<{ type: "error" | "success"; msg: string } | null>(
+    null
+  );
+  const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
 
   async function loadData() {
     try {
@@ -48,11 +61,24 @@ function App() {
     }
   }
 
+  // טוען לוח מובילים כשעוברים ל־Dashboard
+  useEffect(() => {
+    if (loggedIn && tab === "dashboard") {
+      fetchLeaderboard()
+        .then(setLeaderboard)
+        .catch((err) => {
+          console.error(err);
+          setBanner({ type: "error", msg: "Failed to load leaderboard" });
+        });
+    }
+  }, [tab, loggedIn]);
+
   async function handleLogin() {
     try {
       const res = await login(username, password);
       localStorage.setItem("token", res.token);
       setLoggedIn(true);
+      setBanner(null);
       loadData();
     } catch {
       setBanner({ type: "error", msg: "Login failed" });
@@ -64,19 +90,30 @@ function App() {
       const res = await register(username, password);
       localStorage.setItem("token", res.token);
       setLoggedIn(true);
+      setBanner({ type: "success", msg: "Registration successful!" });
       loadData();
     } catch {
       setBanner({ type: "error", msg: "Registration failed" });
     }
   }
 
-  function updatePrediction(matchId: number, field: "home" | "away", value: number) {
+  function updatePrediction(
+    matchId: number,
+    field: "home" | "away",
+    value: number
+  ) {
     setPreds((prev) => ({
       ...prev,
       [matchId]: {
         matchId,
-        home: field === "home" ? value : prev[matchId]?.home ?? 0,
-        away: field === "away" ? value : prev[matchId]?.away ?? 0,
+        home:
+          field === "home"
+            ? value
+            : (prev[matchId]?.home ?? 0),
+        away:
+          field === "away"
+            ? value
+            : (prev[matchId]?.away ?? 0),
       },
     }));
   }
@@ -116,12 +153,18 @@ function App() {
           </div>
 
           {banner && (
-            <div className={banner.type === "error" ? "error-banner" : "success-banner"}>
+            <div
+              className={
+                banner.type === "error" ? "error-banner" : "success-banner"
+              }
+            >
               {banner.msg}
             </div>
           )}
 
-          <h2 className="title">{view === "login" ? "Welcome Back" : "Create Account"}</h2>
+          <h2 className="title">
+            {view === "login" ? "Welcome Back" : "Create Account"}
+          </h2>
           <p className="subtitle">Predict matches & compete with friends!</p>
 
           <div className="auth-form">
@@ -160,7 +203,7 @@ function App() {
   }
 
   // --------------------------
-  // MAIN APP VIEW — RESTORED DESIGN
+  // MAIN APP VIEW — RESTORED DESIGN + LEADERBOARD
   // --------------------------
   return (
     <div className="app-root">
@@ -193,7 +236,11 @@ function App() {
         </div>
 
         {banner && (
-          <div className={banner.type === "error" ? "error-banner" : "success-banner"}>
+          <div
+            className={
+              banner.type === "error" ? "error-banner" : "success-banner"
+            }
+          >
             {banner.msg}
           </div>
         )}
@@ -268,13 +315,50 @@ function App() {
         )}
 
         {/* Dashboard View */}
-        {tab === "dashboard" && points && (
-          <div className="stats-row">
-            <div className="stat-card">
-              <div className="stat-label">Total Points</div>
-              <div className="stat-value">{points.totalPoints}</div>
+        {tab === "dashboard" && (
+          <>
+            {points && (
+              <div className="stats-row">
+                <div className="stat-card">
+                  <div className="stat-label">Your Total Points</div>
+                  <div className="stat-value">{points.totalPoints}</div>
+                </div>
+              </div>
+            )}
+
+            <div className="card" style={{ marginTop: 20 }}>
+              <h3 className="card-title">Leaderboard</h3>
+              <p className="card-subtitle">
+                All users ranked by total points.
+              </p>
+
+              <table style={{ width: "100%", marginTop: 12, fontSize: 13 }}>
+                <thead>
+                  <tr style={{ textAlign: "left", color: "#9ca3af" }}>
+                    <th>#</th>
+                    <th>Username</th>
+                    <th>Points</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboard.map((u, idx) => (
+                    <tr key={u.id} style={{ height: 28 }}>
+                      <td>{idx + 1}</td>
+                      <td>{u.username}</td>
+                      <td>{u.total_points}</td>
+                    </tr>
+                  ))}
+                  {leaderboard.length === 0 && (
+                    <tr>
+                      <td colSpan={3} style={{ paddingTop: 8 }}>
+                        No users yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-          </div>
+          </>
         )}
       </main>
 

@@ -45,3 +45,9 @@ export async function fetchPoints() {
   const res = await api.get('/predictions/points');
   return res.data as { totalPoints: number; perMatch: { matchId: number; points: number }[] };
 }
+
+export async function fetchLeaderboard() {
+  const res = await api.get("/users/leaderboard");
+  return res.data;
+}
+
