@@ -8,24 +8,22 @@ import {
   fetchPoints,
 } from "./api";
 import { Match, Prediction } from "./types";
-import "./App.css";
+import "./styles.css";
 
 function App() {
   const [view, setView] = useState<"login" | "register">("login");
+  const [tab, setTab] = useState<"matches" | "dashboard">("matches");
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+
   const [loggedIn, setLoggedIn] = useState(false);
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [preds, setPreds] = useState<Record<number, Prediction>>({});
-  const [points, setPoints] = useState<{
-    totalPoints: number;
-    perMatch: any[];
-  } | null>(null);
+  const [points, setPoints] = useState<{ totalPoints: number; perMatch: any[] } | null>(null);
 
-  const [banner, setBanner] = useState<{ type: string; msg: string } | null>(
-    null
-  );
+  const [banner, setBanner] = useState<{ type: string; msg: string } | null>(null);
 
   async function loadData() {
     try {
@@ -72,11 +70,7 @@ function App() {
     }
   }
 
-  function updatePrediction(
-    matchId: number,
-    field: "home" | "away",
-    value: number
-  ) {
+  function updatePrediction(matchId: number, field: "home" | "away", value: number) {
     setPreds((prev) => ({
       ...prev,
       [matchId]: {
@@ -99,9 +93,9 @@ function App() {
     }
   }
 
-  // ---------------------------------------
-  // AUTH VIEW
-  // ---------------------------------------
+  // --------------------------
+  // LOGIN PAGE (styled)
+  // --------------------------
   if (!loggedIn) {
     return (
       <div className="auth-container">
@@ -122,23 +116,13 @@ function App() {
           </div>
 
           {banner && (
-            <div
-              className={
-                banner.type === "error"
-                  ? "error-banner"
-                  : "success-banner"
-              }
-            >
+            <div className={banner.type === "error" ? "error-banner" : "success-banner"}>
               {banner.msg}
             </div>
           )}
 
-          <h2 className="title">
-            {view === "login" ? "Welcome Back" : "Create Account"}
-          </h2>
-          <p className="subtitle">
-            Predict matches & compete with friends!
-          </p>
+          <h2 className="title">{view === "login" ? "Welcome Back" : "Create Account"}</h2>
+          <p className="subtitle">Predict matches & compete with friends!</p>
 
           <div className="auth-form">
             <label className="form-label">
@@ -175,34 +159,116 @@ function App() {
     );
   }
 
-  // ---------------------------------------
-  // MAIN APP VIEW
-  // ---------------------------------------
+  // --------------------------
+  // MAIN APP VIEW — RESTORED DESIGN
+  // --------------------------
   return (
     <div className="app-root">
       <header className="app-header">
-        <div className="logo">⚽ Tournament Predictor</div>
+        <div className="logo">⚽ Tournament Bets</div>
         <div className="header-right">
-          <span className="username">{username}</span>
+          <span className="username">Hi, {username}</span>
+          <button className="btn-outline" onClick={() => window.location.reload()}>
+            Logout
+          </button>
         </div>
       </header>
 
       <main className="app-main">
-        <h2 className="title">Your Predictions</h2>
+        {/* Tabs */}
+        <div className="tabs">
+          <button
+            className={`tab ${tab === "matches" ? "active" : ""}`}
+            onClick={() => setTab("matches")}
+          >
+            Matches & Predictions
+          </button>
+
+          <button
+            className={`tab ${tab === "dashboard" ? "active" : ""}`}
+            onClick={() => setTab("dashboard")}
+          >
+            Dashboard
+          </button>
+        </div>
 
         {banner && (
-          <div
-            className={
-              banner.type === "error"
-                ? "error-banner"
-                : "success-banner"
-            }
-          >
+          <div className={banner.type === "error" ? "error-banner" : "success-banner"}>
             {banner.msg}
           </div>
         )}
 
-        {points && (
+        {/* Matches View */}
+        {tab === "matches" && (
+          <>
+            <div className="card" style={{ marginBottom: 20 }}>
+              <h3 className="card-title">Group & Knockout Matches</h3>
+              <p className="card-subtitle">
+                Enter your full-time score prediction for every match.
+                Exact score = 7 pts, correct outcome = 3 pts.
+              </p>
+
+              <div className="matches-grid">
+                {matches.map((m) => (
+                  <div key={m.id} className="match-card">
+                    <div className="match-header">
+                      <span className="pill pill-stage">{m.stage}</span>
+                      <span className="match-date">
+                        {new Date(m.kickoff_at).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="teams-row">
+                      <span className="team-name">{m.home_team_name}</span>
+                      <span className="vs">vs</span>
+                      <span className="team-name">{m.away_team_name}</span>
+                    </div>
+
+                    <div className="prediction-row">
+                      <input
+                        className="score-input"
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={preds[m.id]?.home ?? ""}
+                        onChange={(e) =>
+                          updatePrediction(m.id, "home", Number(e.target.value))
+                        }
+                      />
+
+                      <input
+                        className="score-input"
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={preds[m.id]?.away ?? ""}
+                        onChange={(e) =>
+                          updatePrediction(m.id, "away", Number(e.target.value))
+                        }
+                      />
+                    </div>
+
+                    <div className="result-row">
+                      Result:{" "}
+                      {m.result_home !== null
+                        ? `${m.result_home} - ${m.result_away}`
+                        : "Not Played"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="actions-row">
+                <button className="btn-primary" onClick={saveAll}>
+                  Save Predictions
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Dashboard View */}
+        {tab === "dashboard" && points && (
           <div className="stats-row">
             <div className="stat-card">
               <div className="stat-label">Total Points</div>
@@ -210,56 +276,6 @@ function App() {
             </div>
           </div>
         )}
-
-        <div className="matches-grid">
-          {matches.map((m) => (
-            <div key={m.id} className="match-card">
-              <div className="match-header">
-                <span className="pill pill-stage">{m.stage}</span>
-                <span className="match-date">
-                  {new Date(m.kickoff_at).toLocaleString()}
-                </span>
-              </div>
-
-              <div className="teams-row">
-                <span className="team-name">{m.home_team_name}</span>
-                <span className="vs">vs</span>
-                <span className="team-name">{m.away_team_name}</span>
-              </div>
-
-              <div className="prediction-row">
-                <input
-                className="score-input"
-                type="number"
-                min="0"
-                placeholder="Home Score"
-                
-              />
-
-              <input
-                className="score-input"
-                type="number"
-                min="0"
-                placeholder="Away Score"
-                
-              />
-              </div>
-
-              <div className="result-row">
-                Result:{" "}
-                {m.result_home !== null
-                  ? `${m.result_home} - ${m.result_away}`
-                  : "Not Played"}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="actions-row">
-          <button className="btn-primary" onClick={saveAll}>
-            Save Predictions
-          </button>
-        </div>
       </main>
 
       <footer className="app-footer">
