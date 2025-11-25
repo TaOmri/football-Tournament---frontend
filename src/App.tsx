@@ -1,138 +1,153 @@
-import React, { useEffect, useState } from 'react';
-import AuthForm from './components/AuthForm';
-import Layout from './components/Layout';
-import MatchesList from './components/MatchesList';
-import Dashboard from './components/Dashboard';
-import { fetchMatches, fetchMyPredictions, savePredictions, fetchPoints } from './api';
-import { Match } from './types';
+import { useEffect, useState } from "react";
+import { login, register, fetchMatches, fetchMyPredictions, savePredictions, fetchPoints } from "./api";
+import { Match, Prediction } from "./types";
 
-type Tab = 'matches' | 'dashboard';
-
-const App: React.FC = () => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-  const [username, setUsername] = useState<string>(localStorage.getItem('username') || '');
+function App() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
   const [matches, setMatches] = useState<Match[]>([]);
-  const [predictions, setPredictions] = useState<Record<number, { home: number; away: number }>>({});
-  const [tab, setTab] = useState<Tab>('matches');
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [totalPoints, setTotalPoints] = useState<number>(0);
-  const [locked, setLocked] = useState<boolean>(false);
+  const [preds, setPreds] = useState<Record<number, Prediction>>({});
+  const [points, setPoints] = useState<{ totalPoints: number; perMatch: any[] } | null>(null);
 
-  useEffect(() => {
-    if (token) {
-      bootstrap();
-    }
-  }, [token]);
+  // הימורים לא נעולים כרגע — פתוח לכל המשתמשים
+  const locked = false;
 
-  const bootstrap = async () => {
+  // טעינת נתונים לאחר התחברות
+  async function loadData() {
+    const m = await fetchMatches();
+    setMatches(m);
+
+    const my = await fetchMyPredictions();
+    const mapped: Record<number, Prediction> = {};
+    my.forEach((p) => {
+      mapped[p.match_id] = {
+        matchId: p.match_id,
+        home: p.predicted_home,
+        away: p.predicted_away
+      };
+    });
+    setPreds(mapped);
+
+    const pts = await fetchPoints();
+    setPoints(pts);
+  }
+
+  async function handleLogin() {
     try {
-      setLoading(true);
-      const [matchesData, predsData, pointsData] = await Promise.all([
-        fetchMatches(),
-        fetchMyPredictions(),
-        fetchPoints(),
-      ]);
-      setMatches(matchesData);
-      const preds: Record<number, { home: number; away: number }> = {};
-      predsData.forEach(p => {
-        preds[p.match_id] = { home: p.predicted_home, away: p.predicted_away };
-      });
-      setPredictions(preds);
-      setTotalPoints(pointsData.totalPoints);
-
-      const now = new Date();
-      const futureMatches = matchesData.filter(m => new Date(m.kickoff_at) > now);
-      setLocked(futureMatches.length === 0);
+      const res = await login(username, password);
+      localStorage.setItem("token", res.token);
+      setLoggedIn(true);
+      loadData();
     } catch (err) {
-      console.error(err);
-      setError('Failed to load data from server');
-    } finally {
-      setLoading(false);
+      alert("Login failed");
     }
-  };
+  }
 
-  const handleAuthSuccess = (newToken: string, newUsername: string) => {
-    setToken(newToken);
-    setUsername(newUsername);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    setToken(null);
-    setUsername('');
-  };
-
-  const handleChangePrediction = (matchId: number, home: number, away: number) => {
-    setPredictions(prev => ({ ...prev, [matchId]: { home, away } }));
-  };
-
-  const handleSave = async () => {
+  async function handleRegister() {
     try {
-      setLoading(true);
-      setMessage(null);
-      setError(null);
-      const payload = Object.entries(predictions).map(([matchId, score]) => ({
-        matchId: Number(matchId),
-        home: score.home,
-        away: score.away,
-      }));
-      await savePredictions(payload);
-      setMessage('Predictions saved successfully');
-    } catch (err: any) {
-      console.error(err);
-      setError(err?.response?.data?.message || 'Failed to save predictions');
-    } finally {
-      setLoading(false);
+      const res = await register(username, password);
+      localStorage.setItem("token", res.token);
+      setLoggedIn(true);
+      loadData();
+    } catch (err) {
+      alert("Register failed");
     }
-  };
+  }
 
-  if (!token) {
-    return <AuthForm onAuthSuccess={handleAuthSuccess} />;
+  function updatePrediction(matchId: number, field: "home" | "away", value: number) {
+    setPreds((prev) => ({
+      ...prev,
+      [matchId]: {
+        matchId,
+        home: field === "home" ? value : (prev[matchId]?.home ?? 0),
+        away: field === "away" ? value : (prev[matchId]?.away ?? 0)
+      }
+    }));
+  }
+
+  async function saveAll() {
+    const arr = Object.values(preds);
+    await savePredictions(arr);
+    alert("Saved!");
+    const pts = await fetchPoints();
+    setPoints(pts);
+  }
+
+  if (!loggedIn) {
+    return (
+      <div style={{ padding: 20 }}>
+        <h2>Login / Register</h2>
+
+        <input
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        /><br /><br />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        /><br /><br />
+
+        <button onClick={handleLogin}>Login</button>
+        <button onClick={handleRegister} style={{ marginLeft: 10 }}>
+          Register
+        </button>
+      </div>
+    );
   }
 
   return (
-    <Layout onLogout={handleLogout} username={username}>
-      <div className="tabs">
-        <button
-          className={tab === 'matches' ? 'tab active' : 'tab'}
-          onClick={() => setTab('matches')}
-        >
-          Matches & Predictions
-        </button>
-        <button
-          className={tab === 'dashboard' ? 'tab active' : 'tab'}
-          onClick={() => setTab('dashboard')}
-        >
-          Dashboard
-        </button>
-      </div>
+    <div style={{ padding: 20 }}>
+      <h2>Matches & Predictions</h2>
 
-      {loading && <div className="info-banner">Loading, please wait...</div>}
-      {message && <div className="success-banner">{message}</div>}
-      {error && <div className="error-banner">{error}</div>}
+      <button onClick={saveAll} disabled={locked}>
+        Save Predictions
+      </button>
 
-      {tab === 'matches' && (
-        <>
-          <MatchesList
-            matches={matches}
-            predictions={predictions}
-            onChangePrediction={handleChangePrediction}
-            locked={locked}
+      <br /><br />
+
+      {matches.map((m) => (
+        <div key={m.id} style={{ marginBottom: 12 }}>
+          <strong>
+            {m.home_team_id} vs {m.away_team_id}
+          </strong>
+          <br />
+
+          <input
+            type="number"
+            value={preds[m.id]?.home ?? ""}
+            placeholder="Home"
+            disabled={locked}
+            min={0}
+            onChange={(e) => updatePrediction(m.id, "home", Number(e.target.value))}
           />
-          <div className="actions-row">
-            <button className="btn-primary" onClick={handleSave} disabled={locked || loading}>
-              {locked ? 'Prediction window closed' : 'Save all predictions'}
-            </button>
-          </div>
-        </>
-      )}
 
-      {tab === 'dashboard' && <Dashboard totalPoints={totalPoints} />}
-    </Layout>
+          <input
+            type="number"
+            value={preds[m.id]?.away ?? ""}
+            placeholder="Away"
+            disabled={locked}
+            min={0}
+            style={{ marginLeft: 10 }}
+            onChange={(e) => updatePrediction(m.id, "away", Number(e.target.value))}
+          />
+        </div>
+      ))}
+
+      <hr />
+
+      <h3>Points</h3>
+      {points && (
+        <div>
+          <p>Total: {points.totalPoints}</p>
+        </div>
+      )}
+    </div>
   );
-};
+}
 
 export default App;
