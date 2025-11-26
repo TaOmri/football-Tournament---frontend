@@ -52,9 +52,6 @@ export async function fetchLeaderboard() {
 }
 
 export async function fetchGroupStandings() {
-  const token = localStorage.getItem("token");
-  const res = await fetch(`${API_URL}/groups/standings`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return res.json();
+  const res = await api.get("/groups/standings");
+  return res.data;
 }
