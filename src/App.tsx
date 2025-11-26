@@ -329,15 +329,9 @@ function App() {
           marginTop: "16px"
         }}
       >
-        {Object.entries(
-          groupTable.reduce((acc: any, row: any) => {
-            if (!acc[row.group_name]) acc[row.group_name] = [];
-            acc[row.group_name].push(row);
-            return acc;
-          }, {})
-        ).map(([groupName, teams]: any) => (
+        {groupTable.map((group: any) => (
           <div
-            key={groupName}
+            key={group.group_name}
             className="card"
             style={{
               padding: "16px",
@@ -346,7 +340,8 @@ function App() {
               border: "1px solid rgba(148,163,184,0.3)"
             }}
           >
-            <h3 className="card-title">{groupName}</h3> {/* ← תיקון */}
+            <h3 className="card-title">Group {group.group_name}</h3>
+
             <table className="table-full">
               <thead>
                 <tr>
@@ -359,12 +354,12 @@ function App() {
               </thead>
 
               <tbody>
-                {teams.map((t: any, idx: number) => (
+                {group.teams.map((t: any, idx: number) => (
                   <tr key={idx}>
                     <td>{t.team_name}</td>
                     <td>{t.goals_for}</td>
                     <td>{t.goals_against}</td>
-                    <td>{t.goals_for - t.goals_against}</td>
+                    <td>{t.goal_diff}</td>
                     <td>{t.points}</td>
                   </tr>
                 ))}
