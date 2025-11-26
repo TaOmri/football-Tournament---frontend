@@ -313,51 +313,70 @@ function App() {
         )}
 
         {/* GROUPS */}
-        {tab === "groups" && (
-          <div className="card card-m-top">
-            <h3 className="card-title">Group Standings</h3>
+        {/* GROUPS */}
+{tab === "groups" && (
+  <div className="card card-m-top">
+    <h3 className="card-title">Group Standings</h3>
 
-            {groupTable.length === 0 ? (
-  <p className="groups-empty">No group data yet</p>
-) : (
-  Object.entries(
-    groupTable.reduce((acc: any, row: any) => {
-      if (!acc[row.group_name]) acc[row.group_name] = [];
-      acc[row.group_name].push(row);
-      return acc;
-    }, {})
-  ).map(([groupName, teams]: any) => (
-    <div key={groupName} className="card" style={{ marginBottom: 20 }}>
-      <h3 className="card-title">Group {groupName}</h3>
+    {groupTable.length === 0 ? (
+      <p className="groups-empty">No group data yet</p>
+    ) : (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: "16px",
+          marginTop: "16px"
+        }}
+      >
+        {Object.entries(
+          groupTable.reduce((acc: any, row: any) => {
+            if (!acc[row.group_name]) acc[row.group_name] = [];
+            acc[row.group_name].push(row);
+            return acc;
+          }, {})
+        ).map(([groupName, teams]: any) => (
+          <div
+            key={groupName}
+            className="card"
+            style={{
+              padding: "16px",
+              borderRadius: "var(--radius-md)",
+              background: "rgba(15,23,42,0.95)",
+              border: "1px solid rgba(148,163,184,0.3)"
+            }}
+          >
+            <h3 className="card-title">{groupName}</h3> {/* ← תיקון */}
+            <table className="table-full">
+              <thead>
+                <tr>
+                  <th>Team</th>
+                  <th>GF</th>
+                  <th>GA</th>
+                  <th>GD</th>
+                  <th>Points</th>
+                </tr>
+              </thead>
 
-      <table className="table-full">
-        <thead>
-          <tr>
-            <th>Team</th>
-            <th>GF</th>
-            <th>GA</th>
-            <th>GD</th>
-            <th>Points</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {teams.map((t: any, idx: number) => (
-            <tr key={idx}>
-              <td>{t.team_name}</td>
-              <td>{t.goals_for}</td>
-              <td>{t.goals_against}</td>
-              <td>{t.goals_for - t.goals_against}</td>
-              <td>{t.points}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  ))
-)}
+              <tbody>
+                {teams.map((t: any, idx: number) => (
+                  <tr key={idx}>
+                    <td>{t.team_name}</td>
+                    <td>{t.goals_for}</td>
+                    <td>{t.goals_against}</td>
+                    <td>{t.goals_for - t.goals_against}</td>
+                    <td>{t.points}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
+        ))}
+      </div>
+    )}
+  </div>
+)}
+        
       </main>
 
       <footer className="app-footer">© 2025 Tournament Predictor — All Rights Reserved</footer>
