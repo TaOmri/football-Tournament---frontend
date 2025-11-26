@@ -411,3 +411,31 @@ body {
     grid-template-columns: 1fr;
   }
 }
+/* Remove inline styles replacements */
+
+.card-m-bottom {
+  margin-bottom: 20px;
+}
+
+.card-m-top {
+  margin-top: 20px;
+}
+
+.table-full {
+  width: 100%;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.table-full th {
+  color: var(--muted);
+  text-align: left;
+}
+
+.table-full td {
+  height: 28px;
+}
+
+.groups-empty {
+  padding: 10px;
+}

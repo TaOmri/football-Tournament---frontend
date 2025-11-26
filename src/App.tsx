@@ -6,7 +6,8 @@ import {
   fetchMyPredictions,
   savePredictions,
   fetchPoints,
-  fetchLeaderboard, // 👈 חשוב: לוודא שקיים ב־api.ts
+  fetchLeaderboard,
+  fetchGroupStandings
 } from "./api";
 import { Match, Prediction } from "./types";
 import "./styles.css";
@@ -19,7 +20,7 @@ interface LeaderboardRow {
 
 function App() {
   const [view, setView] = useState<"login" | "register">("login");
-  const [tab, setTab] = useState<"matches" | "dashboard">("matches");
+  const [tab, setTab] = useState<"matches" | "dashboard" | "groups">("matches");
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -28,15 +29,11 @@ function App() {
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [preds, setPreds] = useState<Record<number, Prediction>>({});
-  const [points, setPoints] = useState<{
-    totalPoints: number;
-    perMatch: any[];
-  } | null>(null);
+  const [points, setPoints] = useState<{ totalPoints: number; perMatch: any[] } | null>(null);
 
-  const [banner, setBanner] = useState<{ type: "error" | "success"; msg: string } | null>(
-    null
-  );
+  const [banner, setBanner] = useState<{ type: "error" | "success"; msg: string } | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
+  const [groupTable, setGroupTable] = useState<any[]>([]);
 
   async function loadData() {
     try {
@@ -49,7 +46,7 @@ function App() {
         mapped[p.match_id] = {
           matchId: p.match_id,
           home: p.predicted_home,
-          away: p.predicted_away,
+          away: p.predicted_away
         };
       });
       setPreds(mapped);
@@ -61,14 +58,22 @@ function App() {
     }
   }
 
-  // טוען לוח מובילים כשעוברים ל־Dashboard
   useEffect(() => {
     if (loggedIn && tab === "dashboard") {
       fetchLeaderboard()
         .then(setLeaderboard)
-        .catch((err) => {
-          console.error(err);
+        .catch(() => {
           setBanner({ type: "error", msg: "Failed to load leaderboard" });
+        });
+    }
+  }, [tab, loggedIn]);
+
+  useEffect(() => {
+    if (loggedIn && tab === "groups") {
+      fetchGroupStandings()
+        .then(setGroupTable)
+        .catch(() => {
+          setBanner({ type: "error", msg: "Failed to load groups table" });
         });
     }
   }, [tab, loggedIn]);
@@ -78,7 +83,6 @@ function App() {
       const res = await login(username, password);
       localStorage.setItem("token", res.token);
       setLoggedIn(true);
-      setBanner(null);
       loadData();
     } catch {
       setBanner({ type: "error", msg: "Login failed" });
@@ -97,24 +101,14 @@ function App() {
     }
   }
 
-  function updatePrediction(
-    matchId: number,
-    field: "home" | "away",
-    value: number
-  ) {
+  function updatePrediction(matchId: number, field: "home" | "away", value: number) {
     setPreds((prev) => ({
       ...prev,
       [matchId]: {
         matchId,
-        home:
-          field === "home"
-            ? value
-            : (prev[matchId]?.home ?? 0),
-        away:
-          field === "away"
-            ? value
-            : (prev[matchId]?.away ?? 0),
-      },
+        home: field === "home" ? value : prev[matchId]?.home ?? 0,
+        away: field === "away" ? value : prev[matchId]?.away ?? 0
+      }
     }));
   }
 
@@ -131,7 +125,7 @@ function App() {
   }
 
   // --------------------------
-  // LOGIN PAGE (styled)
+  // LOGIN PAGE
   // --------------------------
   if (!loggedIn) {
     return (
@@ -153,28 +147,18 @@ function App() {
           </div>
 
           {banner && (
-            <div
-              className={
-                banner.type === "error" ? "error-banner" : "success-banner"
-              }
-            >
+            <div className={banner.type === "error" ? "error-banner" : "success-banner"}>
               {banner.msg}
             </div>
           )}
 
-          <h2 className="title">
-            {view === "login" ? "Welcome Back" : "Create Account"}
-          </h2>
+          <h2 className="title">{view === "login" ? "Welcome Back" : "Create Account"}</h2>
           <p className="subtitle">Predict matches & compete with friends!</p>
 
           <div className="auth-form">
             <label className="form-label">
               Username
-              <input
-                className="form-input"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
+              <input className="form-input" value={username} onChange={(e) => setUsername(e.target.value)} />
             </label>
 
             <label className="form-label">
@@ -203,7 +187,7 @@ function App() {
   }
 
   // --------------------------
-  // MAIN APP VIEW — RESTORED DESIGN + LEADERBOARD
+  // MAIN APP VIEW
   // --------------------------
   return (
     <div className="app-root">
@@ -220,49 +204,34 @@ function App() {
       <main className="app-main">
         {/* Tabs */}
         <div className="tabs">
-          <button
-            className={`tab ${tab === "matches" ? "active" : ""}`}
-            onClick={() => setTab("matches")}
-          >
-            Matches & Predictions
+          <button className={`tab ${tab === "matches" ? "active" : ""}`} onClick={() => setTab("matches")}>
+            Matches
           </button>
 
-          <button
-            className={`tab ${tab === "dashboard" ? "active" : ""}`}
-            onClick={() => setTab("dashboard")}
-          >
+          <button className={`tab ${tab === "dashboard" ? "active" : ""}`} onClick={() => setTab("dashboard")}>
             Dashboard
+          </button>
+
+          <button className={`tab ${tab === "groups" ? "active" : ""}`} onClick={() => setTab("groups")}>
+            Groups
           </button>
         </div>
 
         {banner && (
-          <div
-            className={
-              banner.type === "error" ? "error-banner" : "success-banner"
-            }
-          >
-            {banner.msg}
-          </div>
+          <div className={banner.type === "error" ? "error-banner" : "success-banner"}>{banner.msg}</div>
         )}
 
-        {/* Matches View */}
+        {/* MATCHES */}
         {tab === "matches" && (
           <>
-            <div className="card" style={{ marginBottom: 20 }}>
+            <div className="card card-m-bottom">
               <h3 className="card-title">Group & Knockout Matches</h3>
-              <p className="card-subtitle">
-                Enter your full-time score prediction for every match.
-                Exact score = 7 pts, correct outcome = 3 pts.
-              </p>
-
               <div className="matches-grid">
                 {matches.map((m) => (
                   <div key={m.id} className="match-card">
                     <div className="match-header">
                       <span className="pill pill-stage">{m.stage}</span>
-                      <span className="match-date">
-                        {new Date(m.kickoff_at).toLocaleString()}
-                      </span>
+                      <span className="match-date">{new Date(m.kickoff_at).toLocaleString()}</span>
                     </div>
 
                     <div className="teams-row">
@@ -276,30 +245,22 @@ function App() {
                         className="score-input"
                         type="number"
                         min="0"
-                        placeholder="0"
                         value={preds[m.id]?.home ?? ""}
-                        onChange={(e) =>
-                          updatePrediction(m.id, "home", Number(e.target.value))
-                        }
+                        onChange={(e) => updatePrediction(m.id, "home", Number(e.target.value))}
                       />
 
                       <input
                         className="score-input"
                         type="number"
                         min="0"
-                        placeholder="0"
                         value={preds[m.id]?.away ?? ""}
-                        onChange={(e) =>
-                          updatePrediction(m.id, "away", Number(e.target.value))
-                        }
+                        onChange={(e) => updatePrediction(m.id, "away", Number(e.target.value))}
                       />
                     </div>
 
                     <div className="result-row">
                       Result:{" "}
-                      {m.result_home !== null
-                        ? `${m.result_home} - ${m.result_away}`
-                        : "Not Played"}
+                      {m.result_home !== null ? `${m.result_home} - ${m.result_away}` : "Not Played"}
                     </div>
                   </div>
                 ))}
@@ -314,7 +275,7 @@ function App() {
           </>
         )}
 
-        {/* Dashboard View */}
+        {/* DASHBOARD */}
         {tab === "dashboard" && (
           <>
             {points && (
@@ -326,15 +287,12 @@ function App() {
               </div>
             )}
 
-            <div className="card" style={{ marginTop: 20 }}>
+            <div className="card card-m-top">
               <h3 className="card-title">Leaderboard</h3>
-              <p className="card-subtitle">
-                All users ranked by total points.
-              </p>
 
-              <table style={{ width: "100%", marginTop: 12, fontSize: 13 }}>
+              <table className="table-full">
                 <thead>
-                  <tr style={{ textAlign: "left", color: "#9ca3af" }}>
+                  <tr>
                     <th>#</th>
                     <th>Username</th>
                     <th>Points</th>
@@ -342,29 +300,56 @@ function App() {
                 </thead>
                 <tbody>
                   {leaderboard.map((u, idx) => (
-                    <tr key={u.id} style={{ height: 28 }}>
+                    <tr key={u.id}>
                       <td>{idx + 1}</td>
                       <td>{u.username}</td>
                       <td>{u.total_points}</td>
                     </tr>
                   ))}
-                  {leaderboard.length === 0 && (
-                    <tr>
-                      <td colSpan={3} style={{ paddingTop: 8 }}>
-                        No users yet.
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
           </>
         )}
+
+        {/* GROUPS */}
+        {tab === "groups" && (
+          <div className="card card-m-top">
+            <h3 className="card-title">Group Standings</h3>
+
+            {groupTable.length === 0 ? (
+              <p className="groups-empty">No group data yet</p>
+            ) : (
+              <table className="table-full">
+                <thead>
+                  <tr>
+                    <th>Group</th>
+                    <th>Team</th>
+                    <th>GF</th>
+                    <th>GA</th>
+                    <th>GD</th>
+                    <th>Points</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupTable.map((t, idx) => (
+                    <tr key={idx}>
+                      <td>{t.group_name}</td>
+                      <td>{t.team_name}</td>
+                      <td>{t.goals_for}</td>
+                      <td>{t.goals_against}</td>
+                      <td>{t.goals_for - t.goals_against}</td>
+                      <td>{t.points}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </main>
 
-      <footer className="app-footer">
-        © 2025 Tournament Predictor — All Rights Reserved
-      </footer>
+      <footer className="app-footer">© 2025 Tournament Predictor — All Rights Reserved</footer>
     </div>
   );
 }

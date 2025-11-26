@@ -51,3 +51,10 @@ export async function fetchLeaderboard() {
   return res.data;
 }
 
+export async function fetchGroupStandings() {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/groups/standings`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return res.json();
+}
