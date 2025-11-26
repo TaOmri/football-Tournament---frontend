@@ -318,33 +318,44 @@ function App() {
             <h3 className="card-title">Group Standings</h3>
 
             {groupTable.length === 0 ? (
-              <p className="groups-empty">No group data yet</p>
-            ) : (
-              <table className="table-full">
-                <thead>
-                  <tr>
-                    <th>Group</th>
-                    <th>Team</th>
-                    <th>GF</th>
-                    <th>GA</th>
-                    <th>GD</th>
-                    <th>Points</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {groupTable.map((t, idx) => (
-                    <tr key={idx}>
-                      <td>{t.group_name}</td>
-                      <td>{t.team_name}</td>
-                      <td>{t.goals_for}</td>
-                      <td>{t.goals_against}</td>
-                      <td>{t.goals_for - t.goals_against}</td>
-                      <td>{t.points}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+  <p className="groups-empty">No group data yet</p>
+) : (
+  Object.entries(
+    groupTable.reduce((acc: any, row: any) => {
+      if (!acc[row.group_name]) acc[row.group_name] = [];
+      acc[row.group_name].push(row);
+      return acc;
+    }, {})
+  ).map(([groupName, teams]: any) => (
+    <div key={groupName} className="card" style={{ marginBottom: 20 }}>
+      <h3 className="card-title">Group {groupName}</h3>
+
+      <table className="table-full">
+        <thead>
+          <tr>
+            <th>Team</th>
+            <th>GF</th>
+            <th>GA</th>
+            <th>GD</th>
+            <th>Points</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {teams.map((t: any, idx: number) => (
+            <tr key={idx}>
+              <td>{t.team_name}</td>
+              <td>{t.goals_for}</td>
+              <td>{t.goals_against}</td>
+              <td>{t.goals_for - t.goals_against}</td>
+              <td>{t.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ))
+)}
           </div>
         )}
       </main>
